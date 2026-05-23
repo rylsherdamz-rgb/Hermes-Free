@@ -2,7 +2,8 @@ export const config = {
   facebook: {
     pageAccessToken: process.env.FACEBOOK_PAGE_ACCESS_TOKEN!,
     verifyToken: process.env.FACEBOOK_VERIFY_TOKEN!,
-    appSecret: process.env.FACEBOOK_APP_SECRET!,
+    pageId: process.env.FACEBOOK_PAGE_ID || "",
+    appSecret: process.env.FACEBOOK_APP_SECRET || "",
     apiVersion: "v22.0",
   },
 
@@ -26,10 +27,9 @@ export const config = {
   },
 
   gmail: {
-    clientId: process.env.GMAIL_CLIENT_ID!,
-    clientSecret: process.env.GMAIL_CLIENT_SECRET!,
-    refreshToken: process.env.GMAIL_REFRESH_TOKEN!,
-    redirectUri: process.env.GMAIL_REDIRECT_URI!,
+    apiKey: process.env.GMAIL_API_KEY || "",
+    email: process.env.GMAIL_EMAIL || "",
+    appPassword: process.env.GMAIL_APP_PASSWORD || "",
   },
 
   admin: {

@@ -1,22 +1,22 @@
 import type { ToolDefinition } from "@/lib/types";
-import { getRecentEmails, getUnreadEmails } from "@/lib/gmail/client";
+import { fetchEmails } from "@/lib/gmail/client";
 import { chatCompletion } from "@/lib/nvidia/client";
 
 export const gmailTool: ToolDefinition = {
   name: "gmail_summarize",
   description:
-    "Fetch and summarize Gmail emails. Args: action ('latest' or 'unread'), count (number). Requires admin access.",
+    "Fetch and summarize Gmail emails. Requires admin access with Gmail credentials set via /gmail login and /gmail password.",
   parameters: {
     type: "object",
     properties: {
       action: {
         type: "string",
         enum: ["latest", "unread"],
-        description: "Which emails to fetch: 'latest' or 'unread'",
+        description: "Which emails to fetch",
       },
       count: {
         type: "number",
-        description: "Number of emails to fetch. Default: 5",
+        description: "Number of emails. Default: 5",
       },
     },
     required: ["action"],
@@ -27,10 +27,20 @@ export const gmailTool: ToolDefinition = {
     const action = (args.action as string) || "latest";
     const count = (args.count as number) || 5;
 
-    const emails =
-      action === "unread"
-        ? await getUnreadEmails(count)
-        : await getRecentEmails(count);
+    const { getSupabaseAdmin } = await import("@/lib/supabase/client");
+    const { data: creds } = await getSupabaseAdmin()
+      .from("gmail_credentials")
+      .select("email, app_password")
+      .eq("psid", context.psid)
+      .single();
+
+    const c = creds as Record<string, string> | null;
+    if (!c?.email || !c?.app_password) {
+      return "Gmail not set up. Use /gmail login <email> then /gmail password <app-password>.";
+    }
+
+    const query = action === "unread" ? "is:unread in:inbox" : "in:inbox";
+    const emails = await fetchEmails(c.email, c.app_password, query, count);
 
     if (emails.length === 0) {
       return "No emails found.";
@@ -39,7 +49,7 @@ export const gmailTool: ToolDefinition = {
     const emailText = emails
       .map(
         (e, i) =>
-          `📧 Email ${i + 1}:\nFrom: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}`
+          `Email ${i + 1}:\nFrom: ${e.from}\nSubject: ${e.subject}\nSnippet: ${e.snippet}`
       )
       .join("\n\n");
 
@@ -48,7 +58,7 @@ export const gmailTool: ToolDefinition = {
         {
           role: "system",
           content:
-            "You are an email summarizer. Provide a concise, helpful summary of these emails. Group related threads. Highlight any urgent items. Format with emoji for readability.",
+            "Summarize these emails concisely. Group related threads. Highlight urgent items.",
         },
         { role: "user", content: emailText },
       ],

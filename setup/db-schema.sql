@@ -118,3 +118,13 @@ CREATE TABLE IF NOT EXISTS rate_limits (
   window_start TIMESTAMPTZ DEFAULT NOW(),
   PRIMARY KEY (psid)
 );
+
+-- =============================================================
+-- Gmail Credentials (per-admin, set via /gmail login/password)
+-- =============================================================
+CREATE TABLE IF NOT EXISTS gmail_credentials (
+  psid TEXT PRIMARY KEY,
+  email TEXT NOT NULL,
+  app_password TEXT NOT NULL,
+  updated_at TIMESTAMPTZ DEFAULT NOW()
+);

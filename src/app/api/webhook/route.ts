@@ -326,20 +326,54 @@ Keep responses concise and friendly. Use emoji occasionally. You can use tools w
 
 async function handleGmailCommand(psid: string, args: string) {
   const parts = args.toLowerCase().split(/\s+/);
+  const subcommand = parts[0];
 
-  if (parts[0] === "auth") {
-    const { getGmailAuthUrl } = await import("@/lib/gmail/client");
-    const url = getGmailAuthUrl();
-    await sendMessage(psid, `Please authorize Gmail access by visiting:\n${url}\n\nAfter authorizing, you'll be redirected. Contact admin to set up the refresh token.`);
+  // Login: /gmail login user@gmail.com
+  if (subcommand === "login" && parts[1]) {
+    const email = parts[1];
+    const { getSupabaseAdmin } = await import("@/lib/supabase/client");
+    await getSupabaseAdmin()
+      .from("gmail_credentials")
+      .upsert({ psid, email, updated_at: new Date().toISOString() });
+    await sendMessage(psid, `Gmail email set to: ${email}\nNow send your app password with: /gmail password <your-app-password>`);
     return;
   }
 
-  if (parts[0] === "summarize") {
+  // Password: /gmail password xxxx
+  if (subcommand === "password" && parts[1]) {
+    const appPassword = parts[1];
+    const { getSupabaseAdmin } = await import("@/lib/supabase/client");
+    await getSupabaseAdmin()
+      .from("gmail_credentials")
+      .upsert({ psid, app_password: appPassword, updated_at: new Date().toISOString() });
+    await sendMessage(psid, "App password saved. You can now use /gmail summarize latest 5");
+    return;
+  }
+
+  // Summarize
+  if (subcommand === "summarize") {
+    const { getSupabaseAdmin } = await import("@/lib/supabase/client");
+    const { data: creds } = await getSupabaseAdmin()
+      .from("gmail_credentials")
+      .select("email, app_password")
+      .eq("psid", psid)
+      .single();
+
+    if (!(creds as Record<string, string> | null)?.email || !(creds as Record<string, string> | null)?.app_password) {
+      await sendMessage(psid, "Gmail not set up.\nUse: /gmail login <your-email>\nThen: /gmail password <app-password>");
+      return;
+    }
+
     const isUnread = parts[1] === "unread";
     const count = isUnread ? 10 : parseInt(parts[parts.length - 1]) || 5;
 
-    const { getRecentEmails, getUnreadEmails } = await import("@/lib/gmail/client");
-    const emails = isUnread ? await getUnreadEmails(count) : await getRecentEmails(count);
+    const { fetchEmails } = await import("@/lib/gmail/client");
+    const emails = await fetchEmails(
+      (creds as Record<string, string>).email,
+      (creds as Record<string, string>).app_password,
+      isUnread ? "is:unread in:inbox" : "in:inbox",
+      count
+    );
 
     if (emails.length === 0) {
       await sendMessage(psid, isUnread ? "No unread emails." : "No recent emails found.");
@@ -372,7 +406,7 @@ async function handleGmailCommand(psid: string, args: string) {
 
   await sendMessage(
     psid,
-    "Gmail commands:\n/gmail summarize latest <n>\n/gmail summarize unread\n/gmail auth"
+    "Gmail commands:\n/gmail login <email>\n/gmail password <app-password>\n/gmail summarize latest <n>\n/gmail summarize unread"
   );
 }
 
