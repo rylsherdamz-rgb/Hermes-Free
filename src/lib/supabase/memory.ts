@@ -13,7 +13,7 @@ export async function saveMessage(
   content: string
 ) {
   const supabase = getSupabaseAdmin();
-  const embedding = await generateEmbedding(content);
+  const embedding = await generateEmbedding(content, "passage");
 
   const { data: msg, error } = await supabase
     .from(CHAT_HISTORY_TABLE)
@@ -66,7 +66,7 @@ export async function searchSemanticMemory(
   limit = 5
 ): Promise<MemoryRetrieval[]> {
   const supabase = getSupabaseAdmin();
-  const queryEmbedding = await generateEmbedding(query);
+  const queryEmbedding = await generateEmbedding(query, "query");
 
   const { data } = await supabase.rpc("match_memories", {
     query_embedding: queryEmbedding,
@@ -88,7 +88,7 @@ export async function saveLongTermMemory(
   source: string = "conversation"
 ) {
   const supabase = getSupabaseAdmin();
-  const embedding = await generateEmbedding(content);
+  const embedding = await generateEmbedding(content, "passage");
 
   await supabase.from(LONG_TERM_MEMORY_TABLE).insert({
     psid,

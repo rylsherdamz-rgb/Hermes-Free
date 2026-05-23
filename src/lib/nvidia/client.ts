@@ -81,12 +81,30 @@ export async function generateImage(
   return response.data?.[0]?.url || response.data?.[0]?.b64_json || "";
 }
 
-export async function generateEmbedding(text: string): Promise<number[]> {
-  const response = await getClient().embeddings.create({
-    model: "nvidia/nv-embedqa-e5-v5",
-    input: text,
-    encoding_format: "float",
+export async function generateEmbedding(
+  text: string,
+  inputType: "query" | "passage" = "passage"
+): Promise<number[]> {
+  const url = `${config.nvidia.baseUrl}/embeddings`;
+  const response = await fetch(url, {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${config.nvidia.apiKey}`,
+    },
+    body: JSON.stringify({
+      model: "nvidia/nv-embedqa-e5-v5",
+      input: [text],
+      input_type: inputType,
+      encoding_format: "float",
+    }),
   });
 
-  return response.data[0].embedding;
+  if (!response.ok) {
+    const err = await response.text();
+    throw new Error(`Embedding failed: ${err.substring(0, 200)}`);
+  }
+
+  const data = await response.json();
+  return data.data[0].embedding;
 }
