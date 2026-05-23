@@ -18,7 +18,7 @@ export const config = {
     baseUrl: "https://integrate.api.nvidia.com/v1",
     models: {
       llama: "meta/llama-3.3-70b-instruct",
-      deepseek: "deepseek-ai/deepseek-r1",
+      deepseek: "deepseek-ai/deepseek-v4-pro",
       nemotron: "nvidia/nemotron-4-340b-instruct",
       vision: "meta/llama-3.2-90b-vision-instruct",
       sdxl: "stabilityai/sdxl-turbo",

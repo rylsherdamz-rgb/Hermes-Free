@@ -59,7 +59,7 @@ export function allowedModelForUser(
   model: string,
   isAdmin: boolean
 ): boolean {
-  const publicModels = ["llama", "nemotron"];
+  const publicModels = ["llama", "nemotron", "deepseek"];
   if (isAdmin) return true;
   return publicModels.includes(model);
 }

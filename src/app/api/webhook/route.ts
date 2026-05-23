@@ -16,7 +16,7 @@ import type { ChatMessage, MessengerMessage, ToolCall } from "@/lib/types";
 const userActiveModels: Record<string, string> = {};
 
 function getActiveModel(psid: string): string {
-  return userActiveModels[psid] || "llama";
+  return userActiveModels[psid] || "deepseek";
 }
 
 function setActiveModel(psid: string, model: string) {
@@ -56,8 +56,19 @@ export async function POST(req: NextRequest) {
 
     for (const entry of data.entry || []) {
       for (const event of entry.messaging || []) {
-        // Process asynchronously - respond 200 quickly then handle
-        processMessage(event).catch(console.error);
+        // Process asynchronously — respond 200 quickly then handle
+        processMessage(event).catch(async (err) => {
+          console.error("Message processing error:", err);
+          try {
+            const psid = event.sender?.id;
+            if (psid) {
+              await sendSenderAction(psid, "typing_off");
+              await sendMessage(psid, "Sorry, I ran into an error. Please try again.");
+            }
+          } catch {
+            // best-effort error reply
+          }
+        });
       }
     }
 

@@ -19,7 +19,7 @@ export function getModelForTask(task: string): AIModel {
     return "sdxl";
   }
 
-  return "llama";
+  return "deepseek";
 }
 
 export function isImageGenerationRequest(text: string): boolean {
