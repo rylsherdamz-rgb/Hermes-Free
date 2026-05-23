@@ -138,7 +138,7 @@ export async function summarizeAndCondenseMemories(psid: string) {
 
   if (!oldMessages || oldMessages.length < 20) return;
 
-  if (!config.nvidia.apiKey) return;
+  if (!config.ai.apiKey) return;
 
   const { chatCompletion } = await import("@/lib/nvidia/client");
   const conversation = (oldMessages as { content: string }[])
