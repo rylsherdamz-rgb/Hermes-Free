@@ -41,9 +41,12 @@ export async function POST(req: NextRequest) {
     const body = await req.text();
     const signature = req.headers.get("x-hub-signature") || "";
 
+    console.log("[webhook] Received POST, body length:", body.length);
+
     if (config.facebook.appSecret) {
       const valid = verifyWebhookSignature(signature, body);
       if (!valid) {
+        console.log("[webhook] Invalid signature");
         return new Response("Invalid signature", { status: 403 });
       }
     }
@@ -51,22 +54,26 @@ export async function POST(req: NextRequest) {
     const data = JSON.parse(body);
 
     if (data.object !== "page") {
+      console.log("[webhook] Not a page object, received:", data.object);
       return NextResponse.json({ status: "ok" });
     }
 
     for (const entry of data.entry || []) {
       for (const event of entry.messaging || []) {
-        // Process asynchronously — respond 200 quickly then handle
+        const psid = event.sender?.id;
+        const text = event.message?.text || "[no text]";
+        console.log(`[webhook] Processing message from ${psid}: "${text.substring(0, 80)}"`);
+
         processMessage(event).catch(async (err) => {
-          console.error("Message processing error:", err);
+          console.error(`[webhook] Error for ${psid}:`, err instanceof Error ? err.message : String(err));
+          console.error("[webhook] Full error:", err);
           try {
-            const psid = event.sender?.id;
             if (psid) {
               await sendSenderAction(psid, "typing_off");
               await sendMessage(psid, "Sorry, I ran into an error. Please try again.");
             }
-          } catch {
-            // best-effort error reply
+          } catch (e2) {
+            console.error("[webhook] Failed to send error message:", e2);
           }
         });
       }
@@ -80,19 +87,28 @@ export async function POST(req: NextRequest) {
 }
 
 async function processMessage(event: MessengerMessage) {
-  if (!event.message) return;
+  if (!event.message) {
+    console.log("[processMessage] No message in event");
+    return;
+  }
 
   const psid = event.sender.id;
   const text = event.message.text || "";
   const attachments = event.message.attachments || [];
 
-  if (!text && attachments.length === 0) return;
+  if (!text && attachments.length === 0) {
+    console.log("[processMessage] No text or attachments");
+    return;
+  }
 
+  console.log("[processMessage] Step 1: ensureUserProfile for", psid);
   await ensureUserProfile(psid);
-  const admin = await isAdmin(psid);
 
-  // Send typing indicator
+  const admin = await isAdmin(psid);
+  console.log("[processMessage] Step 2: admin check =", admin);
+
   await sendSenderAction(psid, "typing_on");
+  console.log("[processMessage] Step 3: typing_on sent");
 
   try {
     // Save user message
